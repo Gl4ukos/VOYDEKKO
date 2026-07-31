@@ -10,10 +10,9 @@
 #define SCREEN_HEIGHT 32
 
 class Display_Interface {
-private:
+public:
     Adafruit_SSD1306 display;
 
-public:
     Display_Interface();
     int setup_display();
     void update_display();
