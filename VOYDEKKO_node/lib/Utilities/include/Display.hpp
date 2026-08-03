@@ -15,7 +15,8 @@ public:
 
     Display_Interface();
     int setup_display();
-    void update_display();
+    void update_display(String text);
+    void print_to_display(String text);
 };
 
 

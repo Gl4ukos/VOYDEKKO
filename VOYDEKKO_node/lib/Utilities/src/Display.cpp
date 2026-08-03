@@ -11,24 +11,27 @@ int Display_Interface::setup_display(){
     if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)){
         return -1;
     }
-
+    display.setRotation(0);
     display.clearDisplay();
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0,0);
-
-    display.println("Screen online.");
     display.display();
 
     return 0;
 }
 
 
-void Display_Interface::update_display(){
+void Display_Interface::update_display(String text){
 
     display.clearDisplay();
     display.setCursor(0,0);
-    display.println("...");
+    display.println(text);
     display.display();
 
+}
+
+void Display_Interface::print_to_display(String text){
+    display.println(text);
+    display.display();
 }

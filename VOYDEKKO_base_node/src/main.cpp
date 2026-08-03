@@ -1,30 +1,19 @@
-#include <Arduino.h>
-#include "Display.hpp"
 
+
+#include <Arduino.h>
 #include <SPI.h>
 #include <LoRa.h>
+#include <Packet.hpp>
+#include <cstdlib>
 
 #define LORA_SS      5
 #define LORA_RST     27
 #define LORA_DIO0    26
 
-#define B1_pin 17
-#define B2_pin 16
-#define B3_pin 4
-
-Display_Interface display;
-
 void setup() {
-    Serial.begin(115200);
-    if(display.setup_display() != 0){
-        Serial.println("Display error");
-    }
-    Serial.println("System online");
-    delay(500);
 
-    pinMode(B2_pin, INPUT_PULLUP);
-    pinMode(B1_pin, INPUT_PULLUP);
-    pinMode(B3_pin, INPUT_PULLUP);
+    Serial.begin(115200);
+    delay(1000);
 
     Serial.println("Starting LoRa...");
 
@@ -34,42 +23,34 @@ void setup() {
         Serial.println("LoRa init failed!");
         while (true);
     }
+    LoRa.setSpreadingFactor(7);
+    LoRa.setSignalBandwidth(125E3);
+    LoRa.setCodingRate4(5);
+    LoRa.enableCrc();
 
-    delay(500);
     Serial.println("LoRa OK!");
 
     LoRa.setTxPower(17); // dBm
-
-
 }
 
 void loop() {
-    display.display.clearDisplay();
-    display.display.setCursor(0,0);
 
-    if (digitalRead(B1_pin) == LOW) {
-        display.display.print("1");
+    int packetSize = LoRa.parsePacket();
+
+    if (packetSize) {
+
+        String msg = "";
+
+        while (LoRa.available())
+            msg += (char)LoRa.read();
+
+        Serial.println(msg);
+
+        Serial.print("RSSI: ");
+        Serial.println(LoRa.packetRssi());
+
+        Serial.print("SNR: ");
+        Serial.println(LoRa.packetSnr());
     }
-    if (digitalRead(B2_pin) == LOW) {
-        display.display.print("2");
-    }
-    if (digitalRead(B3_pin) == LOW) {
-        display.display.print("3");
-    }
-
-
-    Serial.println("Sending packet...");
-
-    LoRa.beginPacket();
-    LoRa.print("VoydEkko test packet");
-    LoRa.endPacket();
-
-    Serial.println("Packet sent");
-
-    display.display.display();
-    delay(100);
-
-
-
 
 }
