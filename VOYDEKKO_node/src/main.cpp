@@ -71,6 +71,7 @@ void loop() {
         display.update_display(packet.to_string());
 
         wait_for_response = 1;
+        display.print_to_display("\nAwaiting response...");
     }else{
         AckPacket ack_packet;
         while(LoRa.available()){
@@ -78,21 +79,24 @@ void loop() {
 
             if(ack_packet.id == packet.id){
                 if(ack_packet.status == SOLID){
-                    display.print_to_display("ARRIVED OK.");
-                    wait_for_response = 0;
+                    display.update_display(packet.to_string());
+                    display.print_to_display("\nARRIVED OK.");
+                    // wait_for_response = 0;
                     break;
                 }else if(ack_packet.status == CORRUPT){
-                    display.print_to_display("ARRIVED CORRUPT.");
-                    wait_for_response = 0;
+                    display.update_display(packet.to_string());
+                    display.print_to_display("\nARRIVED CORRUPT.");
+                    // wait_for_response = 0;
                     break;
                 }
             }else if(ack_packet.id > packet.id){
-                display.print_to_display("PACKET LOSS!");
-                wait_for_response = 0;
+                display.update_display(packet.to_string());
+                display.print_to_display("\nPACKET LOSS!");
+                // wait_for_response = 0;
                 break;
             }
         }
     }
     
-    delay(250);
+    delay(330);
 }
