@@ -14,12 +14,12 @@ class Packet{
     void update_packet();
 };
 
+enum STATUS_T{
+    SOLID,
+    CORRUPT
+};
+
 class AckPacket{
-    
-    enum STATUS_T{
-        OK,
-        CORRUPT
-    };
 
     public:
     uint8_t prelude;

@@ -23,7 +23,7 @@ String AckPacket::to_string(){
     String result = "ACKPKT_ID: ";
     result += String(id);
     result += "\nSTATUS: ";
-    if(status == OK){
+    if(status == SOLID){
         result += "OK";
     }else if(status == CORRUPT){
         result += "CORRUPT";

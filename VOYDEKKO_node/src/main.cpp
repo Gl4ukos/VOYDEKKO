@@ -72,10 +72,27 @@ void loop() {
 
         wait_for_response = 1;
     }else{
-        
+        AckPacket ack_packet;
+        while(LoRa.available()){
+            LoRa.readBytes((uint8_t*)&ack_packet, sizeof(ack_packet));
+
+            if(ack_packet.id == packet.id){
+                if(ack_packet.status == SOLID){
+                    display.print_to_display("ARRIVED OK.");
+                    wait_for_response = 0;
+                    break;
+                }else if(ack_packet.status == CORRUPT){
+                    display.print_to_display("ARRIVED CORRUPT.");
+                    wait_for_response = 0;
+                    break;
+                }
+            }else if(ack_packet.id > packet.id){
+                display.print_to_display("PACKET LOSS!");
+                wait_for_response = 0;
+                break;
+            }
+        }
     }
     
-
-
-    delay(150);
+    delay(250);
 }
