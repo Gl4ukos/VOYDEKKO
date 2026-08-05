@@ -14,4 +14,19 @@ class Packet{
     void update_packet();
 };
 
+class AckPacket{
+    
+    enum STATUS_T{
+        OK,
+        CORRUPT
+    };
+
+    public:
+    uint8_t prelude;
+    uint8_t id;
+    STATUS_T status;
+
+    String to_string();
+};
+
 #endif

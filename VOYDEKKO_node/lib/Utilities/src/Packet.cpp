@@ -1,7 +1,7 @@
 #include <Packet.hpp>
 
 String Packet::to_string() {
-    String result = "PKT ID: ";
+    String result = "PKT_ID: ";
     result += String(id);
     result += "\nTMP: ";
     result += String(temp);
@@ -15,4 +15,20 @@ void Packet::update_packet(){
     }
 
     temp = 30 + (random(3) - 1.5);
+}
+
+
+
+String AckPacket::to_string(){
+    String result = "ACKPKT_ID: ";
+    result += String(id);
+    result += "\nSTATUS: ";
+    if(status == OK){
+        result += "OK";
+    }else if(status == CORRUPT){
+        result += "CORRUPT";
+    }else{
+        result += "UNKNOWN";
+    }
+    return result;
 }

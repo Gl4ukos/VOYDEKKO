@@ -58,14 +58,24 @@ void setup() {
 
 }
 
+int wait_for_response = 0;
+
 void loop() {
-    packet.update_packet();
+ 
+    if(wait_for_response == 0){
+        packet.update_packet();
 
-    LoRa.beginPacket();
-    LoRa.write((uint8_t*)&packet, sizeof(packet));
-    LoRa.endPacket();
-    display.update_display(packet.to_string());
+        LoRa.beginPacket();
+        LoRa.write((uint8_t*)&packet, sizeof(packet));
+        LoRa.endPacket();
+        display.update_display(packet.to_string());
 
-    delay(250);
+        wait_for_response = 1;
+    }else{
+        
+    }
+    
 
+
+    delay(150);
 }
