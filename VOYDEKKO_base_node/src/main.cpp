@@ -39,18 +39,21 @@ void loop() {
 
     if (packetSize) {
 
-        String msg = "";
+        Packet packet;
+        char byte;
 
         while (LoRa.available())
-            msg += (char)LoRa.read();
+            LoRa.readBytes((uint8_t*)&packet, sizeof(packet));
 
-        Serial.println(msg);
+            Serial.println(packet.to_string());
 
-        Serial.print("RSSI: ");
-        Serial.println(LoRa.packetRssi());
+            Serial.print("RSSI: ");
+            Serial.println(LoRa.packetRssi());
 
-        Serial.print("SNR: ");
-        Serial.println(LoRa.packetSnr());
+            Serial.print("SNR: ");
+            Serial.println(LoRa.packetSnr());
+
+            Serial.println();
     }
 
 }
