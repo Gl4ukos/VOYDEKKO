@@ -33,27 +33,32 @@ void setup() {
     LoRa.setTxPower(17); // dBm
 }
 
+int wait_for_packet = 1;
+
 void loop() {
 
-    int packetSize = LoRa.parsePacket();
-
-    if (packetSize) {
-
-        Packet packet;
-        char byte;
-
-        while (LoRa.available())
-            LoRa.readBytes((uint8_t*)&packet, sizeof(packet));
-
-            Serial.println(packet.to_string());
-
-            Serial.print("RSSI: ");
-            Serial.println(LoRa.packetRssi());
-
-            Serial.print("SNR: ");
-            Serial.println(LoRa.packetSnr());
-
-            Serial.println();
+    if(wait_for_packet == 1){
+        int packetSize = LoRa.parsePacket();
+        if (packetSize) {
+            Packet packet;
+            char byte;
+            if (LoRa.available()){
+                LoRa.readBytes((uint8_t*)&packet, sizeof(packet));
+                Serial.println(packet.to_string());
+                Serial.print("RSSI: ");
+                Serial.println(LoRa.packetRssi());
+                Serial.print("SNR: ");
+                Serial.println(LoRa.packetSnr());
+                Serial.println();
+                
+                wait_for_packet = 0;
+            }
+        }    
+    }else{
+        
     }
+    
+
+
 
 }
