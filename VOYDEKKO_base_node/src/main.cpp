@@ -34,13 +34,16 @@ void setup() {
 }
 
 int wait_for_packet = 1;
+Packet packet;
+AckPacket ack_packet;
+
+uint32_t ack_timeout = 2000;
+uint32_t ack_time_start = millis();
 
 void loop() {
-
     if(wait_for_packet == 1){
         int packetSize = LoRa.parsePacket();
-        if (packetSize) {
-            Packet packet;
+        if (packetSize == sizeof(packet)) {
             char byte;
             if (LoRa.available()){
                 LoRa.readBytes((uint8_t*)&packet, sizeof(packet));
@@ -54,11 +57,22 @@ void loop() {
                 wait_for_packet = 0;
             }
         }    
-    }else{
-        
+        ack_time_start = millis();
+    }
+    else{
+        while(millis() - ack_time_start <= ack_timeout){
+            ack_packet.id = packet.id;
+            ack_packet.status = SOLID;
+
+            LoRa.beginPacket();
+            LoRa.write((uint8_t*)&ack_packet, sizeof(ack_packet));
+            LoRa.endPacket();
+            Serial.println("Sending ACK");
+
+            delay(50);
+        }
+        LoRa.receive();
+        wait_for_packet = 1;
     }
     
-
-
-
 }
