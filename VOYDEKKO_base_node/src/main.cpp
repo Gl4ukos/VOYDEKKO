@@ -60,6 +60,7 @@ void loop() {
         ack_time_start = millis();
     }
     else{
+        Serial.println("Sending ACK");
         while(millis() - ack_time_start <= ack_timeout){
             ack_packet.id = packet.id;
             ack_packet.status = SOLID;
@@ -67,12 +68,11 @@ void loop() {
             LoRa.beginPacket();
             LoRa.write((uint8_t*)&ack_packet, sizeof(ack_packet));
             LoRa.endPacket();
-            Serial.println("Sending ACK");
 
             delay(50);
         }
         LoRa.receive();
         wait_for_packet = 1;
     }
-    
+    delay(50);
 }
