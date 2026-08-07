@@ -18,6 +18,14 @@ Packet packet;
 int wait_for_response = 0;
 AckPacket ack_packet;
 
+enum NodeState{
+    HYBERNATING,
+    TRANSMITTING,
+    AWAITING_ACK,
+    RETRANSMITTING,
+    AWAITING_ACK_AGAIN
+};
+
 void setup() {
     Serial.begin(115200);
     if(display.setup_display() != 0){
@@ -59,58 +67,103 @@ void setup() {
 
 }
 
-uint32_t ack_timeout = 4000;
+
+// Timing variables
+uint32_t ack_timeout = 5000;
 uint32_t ack_time_start;
-int display_hybernation_status = 1;
+
+uint32_t hybernation_duration = 2000;
+
+int display_hybernation_status = 1; // remove
+
+NodeState status = TRANSMITTING;
+
+void hybernate(){
+    delay(hybernation_duration); // !!! This is not actual sleep, fix 
+}
+
+void transmit_packet(){
+    LoRa.beginPacket();
+    LoRa.write((uint8_t*) &packet, sizeof(packet));
+    LoRa.endPacket();
+}
+
+int listen_for_ack(){
+    int packet_size = LoRa.parsePacket();
+    if(packet_size == sizeof(ack_packet)){
+        if(LoRa.available()){
+            LoRa.readBytes((uint8_t*) &ack_packet, sizeof(ack_packet));
+            return 1;
+        }
+    }
+    return 0;
+}
 
 void loop() {
- 
-    if(wait_for_response == 0){
-        packet.update_packet();
+    switch(status){
+        case HYBERNATING:
+        {
+            display.update_display("Hybernating...");
+            hybernate();
+            status = TRANSMITTING;
+            break;
+        }
 
-        LoRa.beginPacket();
-        LoRa.write((uint8_t*)&packet, sizeof(packet));
-        LoRa.endPacket();
-        display.update_display(packet.to_string());
 
-        wait_for_response = 1;
-        display.print_to_display("\nAwaiting response...");     
-        LoRa.receive();
-        ack_time_start = millis();
-    }
-    
-    while(wait_for_response == 1){
-        int packet_size = LoRa.parsePacket();
-        if(packet_size == sizeof(ack_packet)){
-            if(LoRa.available()){
-                LoRa.readBytes((uint8_t*)&ack_packet, sizeof(ack_packet));
+        case TRANSMITTING:
+        {
+            packet.update_packet();
+            transmit_packet();
+            display.update_display(packet.to_string());
+            status = AWAITING_ACK;
+            break;
+        }
+
+        case AWAITING_ACK:
+        {
+            display.print_to_display("\nAwaiting response...");
+            ack_time_start = millis();
+            int response = 0;
+            while(millis() - ack_time_start <= ack_timeout){
+                response = listen_for_ack();
+                if(response){
+                    break;
+                }
+                delay(50);
+            }
+            if(response == 0){
+                display.update_display(packet.to_string());
+                display.print_to_display("No response from Base.");
+                status = RETRANSMITTING;
+            }else{
                 if(ack_packet.id == packet.id){
                     if(ack_packet.status == SOLID){
                         display.update_display(packet.to_string());
-                        display.print_to_display("\nARRIVED OK.");
-                        delay(1000);
-                        wait_for_response = 0;
-                    }else if(ack_packet.status == CORRUPT){
+                        display.print_to_display("\nTRNSMSSN SCCSSFL.");
+                        status = HYBERNATING;
+                    }else{
                         display.update_display(packet.to_string());
-                        display.print_to_display("\nARRIVED CORRUPT.");
-                        delay(1000);
-                        wait_for_response = 0;
+                        display.print_to_display("\nTRNSMSSN FLTY.");
+                        status = HYBERNATING;
                     }
-                }else if(ack_packet.id > packet.id){
+                }else{
                     display.update_display(packet.to_string());
                     display.print_to_display("\nPACKET LOSS!");
-                    delay(1000);
-                    wait_for_response = 0;
+                    status = HYBERNATING;
                 }
             }
+            delay(500);
+            break;
         }
-        if((millis() - ack_time_start) >= ack_timeout){
-            wait_for_response = 0;
-            display.update_display("No response from Base");
+
+        case RETRANSMITTING:
+        {
+            display.update_display(packet.to_string());
+            display.print_to_display("\nRETRANSMITTING...");
+            delay(200);
+            transmit_packet();
+            status = AWAITING_ACK;
+            break;
         }
-        delay(50);
     }
-    
-    display.print_to_display("Hybernating...");
-    delay(5000);
 }
