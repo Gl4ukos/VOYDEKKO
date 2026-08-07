@@ -22,8 +22,7 @@ enum NodeState{
     HYBERNATING,
     TRANSMITTING,
     AWAITING_ACK,
-    RETRANSMITTING,
-    AWAITING_ACK_AGAIN
+    RETRANSMITTING
 };
 
 void setup() {
@@ -73,6 +72,7 @@ uint32_t ack_timeout = 5000;
 uint32_t ack_time_start;
 
 uint32_t hybernation_duration = 2000;
+int retransmission_tries = 5;
 
 int display_hybernation_status = 1; // remove
 
@@ -106,9 +106,9 @@ void loop() {
             display.update_display("Hybernating...");
             hybernate();
             status = TRANSMITTING;
+            retransmission_tries = 5;
             break;
         }
-
 
         case TRANSMITTING:
         {
@@ -158,11 +158,16 @@ void loop() {
 
         case RETRANSMITTING:
         {
-            display.update_display(packet.to_string());
-            display.print_to_display("\nRETRANSMITTING...");
-            delay(200);
-            transmit_packet();
-            status = AWAITING_ACK;
+            if(retransmission_tries>0){
+                display.update_display(packet.to_string());
+                display.print_to_display("\nRETRANSMITTING...");
+                delay(50);
+                transmit_packet();
+                status = AWAITING_ACK;
+                retransmission_tries -=1;
+            }else{
+                status = HYBERNATING;
+            }
             break;
         }
     }
