@@ -7,7 +7,7 @@
 class Packet{
     public:
     uint8_t prelude;
-    uint8_t id;
+    uint32_t id;
     float_t temp;
 
     String to_string();
@@ -23,7 +23,7 @@ class AckPacket{
 
     public:
     uint8_t prelude;
-    uint8_t id;
+    uint32_t id;
     STATUS_T status;
 
     String to_string();

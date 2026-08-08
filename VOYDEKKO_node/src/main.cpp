@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "Display.hpp"
 #include "Packet.hpp"
+#include <esp_sleep.h>
 
 #include <SPI.h>
 #include <LoRa.h>
@@ -14,7 +15,7 @@
 #define B3_pin 4
 
 Display_Interface display;
-Packet packet;
+RTC_DATA_ATTR Packet packet;
 int wait_for_response = 0;
 AckPacket ack_packet;
 
@@ -32,7 +33,7 @@ void setup() {
     }
     Serial.println("Display online.");
     display.print_to_display("Screen online.");
-    delay(500);
+    delay(250);
 
     pinMode(B2_pin, INPUT_PULLUP);
     pinMode(B1_pin, INPUT_PULLUP);
@@ -52,15 +53,15 @@ void setup() {
     LoRa.setCodingRate4(5);
     LoRa.enableCrc();
 
-    delay(500);
+    delay(250);
     Serial.println("LoRa OK.");
     display.print_to_display("LoRa Online.");
 
     LoRa.setTxPower(17); // dBm
-    delay(700);
+    delay(70);
 
     display.print_to_display("BOOT COMPLETED.");
-    delay(1000);
+    delay(500);
 
     packet.prelude = 0b10101010;
 
@@ -71,15 +72,14 @@ void setup() {
 uint32_t ack_timeout = 5000;
 uint32_t ack_time_start;
 
-uint32_t hybernation_duration = 2000;
+uint32_t hybernation_seconds = 5;
 int retransmission_tries = 5;
-
-int display_hybernation_status = 1; // remove
 
 NodeState status = TRANSMITTING;
 
 void hybernate(){
-    delay(hybernation_duration); // !!! This is not actual sleep, fix 
+    esp_sleep_enable_timer_wakeup((uint64_t)hybernation_seconds * 1000000ULL);
+    esp_deep_sleep_start();
 }
 
 void transmit_packet(){
@@ -103,10 +103,13 @@ void loop() {
     switch(status){
         case HYBERNATING:
         {
-            display.update_display("Hybernating...");
+            display.update_display("  \nHybernating...");
+            delay(1000);
+            display.display.clearDisplay();
+            display.display.display();
             hybernate();
-            status = TRANSMITTING;
-            retransmission_tries = 5;
+            // status = TRANSMITTING; //useless remove
+            // retransmission_tries = 5; //useless remove
             break;
         }
 
@@ -152,7 +155,7 @@ void loop() {
                     status = HYBERNATING;
                 }
             }
-            delay(500);
+            delay(1000);
             break;
         }
 
