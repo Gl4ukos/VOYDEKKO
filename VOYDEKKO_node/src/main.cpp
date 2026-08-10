@@ -33,7 +33,7 @@ void setup() {
     }
     Serial.println("Display online.");
     display.print_to_display("Screen online.");
-    delay(250);
+    delay(100);
 
     pinMode(B2_pin, INPUT_PULLUP);
     pinMode(B1_pin, INPUT_PULLUP);
@@ -53,15 +53,13 @@ void setup() {
     LoRa.setCodingRate4(5);
     LoRa.enableCrc();
 
-    delay(250);
+    delay(100);
     Serial.println("LoRa OK.");
     display.print_to_display("LoRa Online.");
 
     LoRa.setTxPower(17); // dBm
-    delay(70);
-
     display.print_to_display("BOOT COMPLETED.");
-    delay(500);
+    delay(250);
 
     packet.prelude = 0b10101010;
 
@@ -69,11 +67,12 @@ void setup() {
 
 
 // Timing variables
-uint32_t ack_timeout = 5000;
+uint32_t ack_timeout = 1000;
 uint32_t ack_time_start;
 
 uint32_t hybernation_seconds = 5;
-int retransmission_tries = 5;
+int MAX_TRANSMISSION_TRIES = 5;
+int retransmission_tries = MAX_TRANSMISSION_TRIES;
 
 NodeState status = TRANSMITTING;
 
@@ -108,17 +107,17 @@ void loop() {
             display.display.clearDisplay();
             display.display.display();
             hybernate();
-            // status = TRANSMITTING; //useless remove
-            // retransmission_tries = 5; //useless remove
             break;
         }
 
         case TRANSMITTING:
         {
             packet.update_packet();
+            packet.retries = 0;
             transmit_packet();
             display.update_display(packet.to_string());
             status = AWAITING_ACK;
+            retransmission_tries = MAX_TRANSMISSION_TRIES;
             break;
         }
 
@@ -136,17 +135,17 @@ void loop() {
             }
             if(response == 0){
                 display.update_display(packet.to_string());
-                display.print_to_display("No response from Base.");
+                display.print_to_display("NO RESPONSE.");
                 status = RETRANSMITTING;
             }else{
                 if(ack_packet.id == packet.id){
                     if(ack_packet.status == SOLID){
                         display.update_display(packet.to_string());
-                        display.print_to_display("\nTRNSMSSN SCCSSFL.");
+                        display.print_to_display("\nCOMMS GOOD.");
                         status = HYBERNATING;
                     }else{
                         display.update_display(packet.to_string());
-                        display.print_to_display("\nTRNSMSSN FLTY.");
+                        display.print_to_display("\nCORRUPT.");
                         status = HYBERNATING;
                     }
                 }else{
@@ -168,6 +167,7 @@ void loop() {
                 transmit_packet();
                 status = AWAITING_ACK;
                 retransmission_tries -=1;
+                packet.retries += 1;
             }else{
                 status = HYBERNATING;
             }

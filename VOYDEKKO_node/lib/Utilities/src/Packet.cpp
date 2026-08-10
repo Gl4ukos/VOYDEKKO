@@ -5,6 +5,8 @@ String Packet::to_string() {
     result += String(id);
     result += "\nTMP: ";
     result += String(temp);
+    result += "\nRETRIES: ";
+    result += String(retries);
     return result;
 }
 
