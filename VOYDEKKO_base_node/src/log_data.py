@@ -21,8 +21,8 @@ reset = 0
 fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
 
 
-print("Specify duration of value logging (in seconds): ")
-duration = int(input())
+print("Specify duration of value logging (in minutes): ")
+duration = int(int(input()) * 60)
 
 start = time.time()
 
