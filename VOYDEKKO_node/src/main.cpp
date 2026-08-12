@@ -19,6 +19,7 @@ RTC_DATA_ATTR Packet packet;
 int wait_for_response = 0;
 AckPacket ack_packet;
 
+
 enum NodeState{
     HYBERNATING,
     TRANSMITTING,
@@ -26,15 +27,37 @@ enum NodeState{
     RETRANSMITTING
 };
 
+
+void update_display_pkt_info(){
+    String result = "PKT_ID: ";
+    result += String(packet.id);
+    result += " [";
+    result += String(packet.temp);
+    result += "]";
+    display.update_line(0, result);
+}
+void update_display_link_info(){
+    String result = "RSSI: ";
+    result += String(LoRa.packetRssi());
+    result += " SNR: ";
+    result += String(LoRa.packetSnr());
+    display.update_line(1, result);
+}
+void update_display_action(String action){
+    display.update_line(2, action); 
+}
+void update_display_status(String state){
+    display.update_line(3, state);
+}
+
 void setup() {
     Serial.begin(115200);
     if(display.setup_display() != 0){
         Serial.println("Display error");
     }
     Serial.println("Display online.");
-    display.print_to_display("Screen online.");
+    display.update_line(0, "Screen online.");
     delay(100);
-
     pinMode(B2_pin, INPUT_PULLUP);
     pinMode(B1_pin, INPUT_PULLUP);
     pinMode(B3_pin, INPUT_PULLUP);
@@ -45,20 +68,20 @@ void setup() {
 
     if (!LoRa.begin(868E6)) {
         Serial.println("LoRa init failed!");
-        display.print_to_display("LoRa Failed!");
+        display.update_line(1, "LoRa Failed!");
         while (true);
     }
-    LoRa.setSpreadingFactor(7);
+    LoRa.setSpreadingFactor(10);
     LoRa.setSignalBandwidth(125E3);
     LoRa.setCodingRate4(5);
     LoRa.enableCrc();
 
     delay(100);
     Serial.println("LoRa OK.");
-    display.print_to_display("LoRa Online.");
+    display.update_line(1,"LoRa Online.");
 
     LoRa.setTxPower(17); // dBm
-    display.print_to_display("BOOT COMPLETED.");
+    display.update_line(2,"BOOT COMPLETED.");
     delay(250);
 
     packet.prelude = 0b10101010;
@@ -67,7 +90,7 @@ void setup() {
 
 
 // Timing variables
-uint32_t ack_timeout = 1000;
+uint32_t ack_timeout = 2000;
 uint32_t ack_time_start;
 
 uint32_t hybernation_seconds = 5;
@@ -99,10 +122,13 @@ int listen_for_ack(){
 }
 
 void loop() {
+    
+    
     switch(status){
         case HYBERNATING:
         {
-            display.update_display("  \nHybernating...");
+            display.display.clearDisplay();
+            display.update_line(2,"  HYBERNATING... ");
             delay(1000);
             display.display.clearDisplay();
             display.display.display();
@@ -114,8 +140,13 @@ void loop() {
         {
             packet.update_packet();
             packet.retries = 0;
+
+            display.display.clearDisplay();
+            update_display_pkt_info();
+            update_display_action("TRANSMITTING...");
+            delay(1000);
+
             transmit_packet();
-            display.update_display(packet.to_string());
             status = AWAITING_ACK;
             retransmission_tries = MAX_TRANSMISSION_TRIES;
             break;
@@ -123,7 +154,10 @@ void loop() {
 
         case AWAITING_ACK:
         {
-            display.print_to_display("\nAwaiting response...");
+            display.display.clearDisplay();
+            update_display_pkt_info();
+            update_display_action("TRANSMITTING. ("+ String(packet.retries)+ ")");
+            update_display_status("AWAITING RESPONSE...");
             ack_time_start = millis();
             int response = 0;
             while(millis() - ack_time_start <= ack_timeout){
@@ -133,37 +167,39 @@ void loop() {
                 }
                 delay(50);
             }
+            display.display.clearDisplay();
             if(response == 0){
-                display.update_display(packet.to_string());
-                display.print_to_display("NO RESPONSE.");
+                update_display_status("NO RESPONSE.");
                 status = RETRANSMITTING;
             }else{
                 if(ack_packet.id == packet.id){
                     if(ack_packet.status == SOLID){
-                        display.update_display(packet.to_string());
-                        display.print_to_display("\nCOMMS GOOD.");
+                        update_display_link_info();
+                        update_display_status("COMMS OK.");
                         status = HYBERNATING;
                     }else{
-                        display.update_display(packet.to_string());
-                        display.print_to_display("\nCORRUPT.");
+                        update_display_link_info();
+                        update_display_status("CORRUPT.");
                         status = HYBERNATING;
                     }
                 }else{
-                    display.update_display(packet.to_string());
-                    display.print_to_display("\nPACKET LOSS!");
+                    update_display_link_info();
+                    update_display_status("PACKET LOSS!");
                     status = HYBERNATING;
                 }
             }
-            delay(1000);
+            delay(2000);
             break;
         }
 
         case RETRANSMITTING:
         {
             if(retransmission_tries>0){
-                display.update_display(packet.to_string());
-                display.print_to_display("\nRETRANSMITTING...");
-                delay(50);
+                display.display.clearDisplay();
+                update_display_pkt_info();
+                update_display_action("RETRANSMITTING. (" + String(packet.retries) + ")");
+                delay(1000);
+
                 transmit_packet();
                 status = AWAITING_ACK;
                 retransmission_tries -=1;

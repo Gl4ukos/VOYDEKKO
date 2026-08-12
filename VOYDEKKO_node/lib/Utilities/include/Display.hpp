@@ -15,8 +15,10 @@ public:
 
     Display_Interface();
     int setup_display();
-    void update_display(String text);
-    void print_to_display(String text);
+    void update(String text);
+    void print(String text);
+    void println(String text);
+    void update_line(int line, String text);
 };
 
 

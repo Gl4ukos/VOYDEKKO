@@ -3,10 +3,8 @@
 String Packet::to_string() {
     String result = "PKT_ID: ";
     result += String(id);
-    result += "\nTMP: ";
+    result += "  TMP: ";
     result += String(temp);
-    result += "\nRETRIES: ";
-    result += String(retries);
     return result;
 }
 

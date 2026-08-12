@@ -22,16 +22,35 @@ int Display_Interface::setup_display(){
 }
 
 
-void Display_Interface::update_display(String text){
+void Display_Interface::update(String text){
 
     display.clearDisplay();
     display.setCursor(0,0);
-    display.println(text);
+    display.print(text);
     display.display();
 
 }
 
-void Display_Interface::print_to_display(String text){
+void Display_Interface::print(String text){
+    display.print(text);
+    display.display();
+}
+
+void Display_Interface::println(String text){
     display.println(text);
+    display.display();
+}
+
+void Display_Interface::update_line(int line, String text)
+{
+    int y = line * 8;
+
+    display.fillRect(0, y, 128, 8, SSD1306_BLACK);
+
+    display.setCursor(0, y);
+    display.setTextColor(SSD1306_WHITE);
+    display.setTextSize(1);
+    display.print(text);
+
     display.display();
 }
