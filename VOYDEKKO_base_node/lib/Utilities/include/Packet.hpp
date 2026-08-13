@@ -9,6 +9,7 @@ class Packet{
     uint8_t prelude;
     uint32_t id;
     float_t temp;
+    uint8_t retries;
 
     String to_string();
     void update_packet();

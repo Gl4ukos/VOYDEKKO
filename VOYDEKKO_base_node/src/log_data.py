@@ -7,18 +7,20 @@ packet_id = []
 rssi = []
 snr = []
 temperature = []
+retries = []
 
 packet_id_log_file = open("packet_id_log.txt", "w")
 temp_log_file = open("temp_log.txt", "w")
 rssi_log_file = open("rssi_log.txt", "w")
 snr_log_file = open("snr_log.txt", "w")
+retries_log_file = open("retries_log.txt", "w")
 
 s = serial.Serial("/dev/ttyUSB0", 115200)
 
 max_samples = 1_000_000
 reset = 0
 
-fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1)
 
 
 print("Specify duration of value logging (in minutes): ")
@@ -39,12 +41,12 @@ def update(frame):
         temp_log_file.close()
         rssi_log_file.close()
         snr_log_file.close()
+        retries_log_file.close()
 
         s.close()
 
         plt.close(fig)
         return
-
 
     line = s.readline().decode("utf-8", errors="ignore").strip()
 
@@ -72,6 +74,10 @@ def update(frame):
                 snr.append(float(split_line[1]))
                 snr_log_file.write(split_line[1] + "\n")
 
+            elif split_line[0] == "RETRIES:":
+                retries.append(int(split_line[1]))
+                retries_log_file.write(split_line[1] + "\n")
+
 
             # Limit arrays
             if (reset == 1):
@@ -93,6 +99,7 @@ def update(frame):
         ax1.clear()
         ax2.clear()
         ax3.clear()
+        ax4.clear()
 
         ax1.plot(packet_id[:n], temperature[:n])
         ax1.set_ylabel("Temperature")
@@ -102,7 +109,14 @@ def update(frame):
 
         ax3.plot(packet_id[:n], snr[:n])
         ax3.set_ylabel("SNR")
-        ax3.set_xlabel("Packet ID")
+
+        ax4.plot(packet_id[:n], retries[:n])
+        ax4.set_ylabel("RETRIES")
+        ax4.set_xlabel("Packet ID")
+
+        print("\r"+str(int(time.time() - start)) + "/" + str(duration), end="", flush=True)
+        time.sleep(0.1)
+
 
 
 ani = FuncAnimation(
