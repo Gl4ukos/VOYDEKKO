@@ -71,7 +71,7 @@ void setup() {
         display.update_line(1, "LoRa Failed!");
         while (true);
     }
-    LoRa.setSpreadingFactor(10);
+    LoRa.setSpreadingFactor(12);
     LoRa.setSignalBandwidth(125E3);
     LoRa.setCodingRate4(5);
     LoRa.enableCrc();
@@ -100,14 +100,24 @@ int retransmission_tries = MAX_TRANSMISSION_TRIES;
 NodeState status = TRANSMITTING;
 
 void hybernate(){
-    esp_sleep_enable_timer_wakeup((uint64_t)hybernation_seconds * 1000000ULL);
-    esp_deep_sleep_start();
+    delay(1000);
+    status = TRANSMITTING;
+    // esp_sleep_enable_timer_wakeup((uint64_t)hybernation_seconds * 1000000ULL);
+    // esp_deep_sleep_start();
 }
 
 void transmit_packet(){
+    
     LoRa.beginPacket();
+    update_display_status("Begin transmit");
+    delay(500);
     LoRa.write((uint8_t*) &packet, sizeof(packet));
+    update_display_status("Transmit write");
+    delay(500);
     LoRa.endPacket();
+    update_display_status("End transmit");
+    delay(500);
+
 }
 
 int listen_for_ack(){
