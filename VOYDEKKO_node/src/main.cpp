@@ -24,7 +24,7 @@ PROPOSED_CONFIG curr_config = HI;
 PROPOSED_CONFIG requested_config = curr_config;
 
 // Timing variables
-uint32_t ack_timeout = 2000;
+uint32_t ack_timeout = 4000;
 uint32_t ack_time_start;
 uint32_t reconf_commit_time_start;
 uint32_t reconf_commit_timeout = 2000;
@@ -183,7 +183,6 @@ void loop() {
             display.display.clearDisplay();
             update_display_pkt_info();
             update_display_action("TRANSMITTING...");
-            delay(250);
 
             transmit_packet();
             status = AWAITING_ACK;
@@ -220,7 +219,8 @@ void loop() {
                             requested_config = ack_packet.prop_config;
                             status = RECONFIGURING;
                         }else{
-                            status = HYBERNATING;                            
+                            status = HYBERNATING;      
+                            delay(500);
                         }
                     }else{
                         Serial.println(ack_packet.to_string());
@@ -228,15 +228,16 @@ void loop() {
                         update_display_action("TRANSMITTING. ("+ String(packet.retries)+ ")");
                         update_display_status("CORRUPT.");
                         status = RETRANSMITTING;
+                        delay(1000);
                     }
                 }else{
                     update_display_link_info();
                     update_display_action("TRANSMITTING. ("+ String(packet.retries)+ ")");
                     update_display_status("PACKET LOSS!");
                     status = HYBERNATING;
+                    delay(1000);
                 }
             }
-            delay(1000);
             break;
         }
 
@@ -281,7 +282,7 @@ void loop() {
             reconf_request_packet.prop_config = requested_config;
             LoRa.write((uint8_t*) &reconf_request_packet, sizeof(reconf_request_packet));
             LoRa.endPacket();
-            delay(250);
+            LoRa.receive();
             // awaiting reconfigure commit packet from base
             reconf_commit_time_start = millis();
             int response = 0;
@@ -302,7 +303,7 @@ void loop() {
             }else{
                 update_display_status("RECONFIG COMPLETE");
             }
-            delay(1000);
+            delay(500);
             status = HYBERNATING;
             break;
         }
