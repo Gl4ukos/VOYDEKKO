@@ -15,51 +15,41 @@ rssi_log_file = open("rssi_log.txt", "w")
 snr_log_file = open("snr_log.txt", "w")
 retries_log_file = open("retries_log.txt", "w")
 
-s = serial.Serial("/dev/ttyUSB1", 115200)
+s = serial.Serial("/dev/ttyUSB0", 115200)
 
 max_samples = 1_000_000
 reset = 0
 
 fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1)
 
-
 print("Specify duration of value logging (in minutes): ")
-duration = int(int(input()) * 60)
+duration = int(input()) * 60
 
 start = time.time()
+running = True
 
 
 def update(frame):
-    global reset
+    global reset, running
+
     # Stop after duration
     if time.time() - start >= duration:
-
-        # Save final graph snapshot
-        fig.savefig("voydekko_final_graph.png", dpi=300)
-
-        packet_id_log_file.close()
-        temp_log_file.close()
-        rssi_log_file.close()
-        snr_log_file.close()
-        retries_log_file.close()
-
-        s.close()
-
+        running = False
+        ani.event_source.stop()
         plt.close(fig)
         return
 
     line = s.readline().decode("utf-8", errors="ignore").strip()
 
     if line:
-
         split_line = line.split(" ")
 
         try:
-
             if split_line[0] == "PKT_ID:":
                 packet_id.append(int(split_line[1]))
                 packet_id_log_file.write(split_line[1] + "\n")
-                if(int(split_line[1]) == 999):
+
+                if int(split_line[1]) == 999:
                     reset = 1
 
             elif split_line[0] == "TMP:":
@@ -78,22 +68,28 @@ def update(frame):
                 retries.append(int(split_line[1]))
                 retries_log_file.write(split_line[1] + "\n")
 
-
             # Limit arrays
-            if (reset == 1):
-                for arr in [packet_id, temperature, rssi, snr]:
+            if reset == 1:
+                for arr in [packet_id, temperature, rssi, snr, retries]:
                     arr.clear()
-            else:        
-                for arr in [packet_id, temperature, rssi, snr]:
+                reset = 0
+
+            else:
+                for arr in [packet_id, temperature, rssi, snr, retries]:
                     if len(arr) > max_samples:
                         arr.pop(0)
 
         except ValueError:
             print("Bad line:", line)
 
-
-    # Only plot when data lengths match
-    n = min(len(packet_id), len(temperature), len(rssi), len(snr), len(retries))
+    # Only plot when all data lengths match
+    n = min(
+        len(packet_id),
+        len(temperature),
+        len(rssi),
+        len(snr),
+        len(retries)
+    )
 
     if n > 0:
         ax1.clear()
@@ -114,9 +110,14 @@ def update(frame):
         ax4.set_ylabel("RETRIES")
         ax4.set_xlabel("Packet ID")
 
-        print("\r"+str(int(time.time() - start)) + "/" + str(duration), end="", flush=True)
-        time.sleep(0.1)
-
+        print(
+            "\r" +
+            str(int(time.time() - start)) +
+            "/" +
+            str(duration),
+            end="",
+            flush=True
+        )
 
 
 ani = FuncAnimation(
@@ -125,5 +126,36 @@ ani = FuncAnimation(
     interval=50
 )
 
-plt.tight_layout()
-plt.show()
+
+try:
+    plt.tight_layout()
+    plt.show()
+
+except KeyboardInterrupt:
+    print("\nLogging interrupted by user.")
+
+finally:
+    print("\nSaving graph...")
+
+    # Save the final graph
+    fig.savefig(
+        "voydekko_final_graph.png",
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    # Close log files
+    packet_id_log_file.close()
+    temp_log_file.close()
+    rssi_log_file.close()
+    snr_log_file.close()
+    retries_log_file.close()
+
+    # Close serial connection
+    if s.is_open:
+        s.close()
+
+    plt.close(fig)
+
+    print("Graph saved.")
+    print("Logging finished.")
