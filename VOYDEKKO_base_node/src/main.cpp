@@ -10,6 +10,13 @@
 #define LORA_RST     27
 #define LORA_DIO0    26
 
+int wait_for_packet = 1;
+Packet packet;
+AckPacket ack_packet;
+
+uint32_t ack_timeout = 2000;
+uint32_t ack_time_start = millis();
+
 void setup() {
 
     Serial.begin(115200);
@@ -31,14 +38,8 @@ void setup() {
     Serial.println("LoRa OK!");
 
     LoRa.setTxPower(17); // dBm
+    ack_packet.prop_config = HI;
 }
-
-int wait_for_packet = 1;
-Packet packet;
-AckPacket ack_packet;
-
-uint32_t ack_timeout = 2000;
-uint32_t ack_time_start = millis();
 
 void loop() {
     if(wait_for_packet == 1){

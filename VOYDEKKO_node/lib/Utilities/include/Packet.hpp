@@ -14,9 +14,16 @@ class Packet{
     String to_string();
     void update_packet();
 };
+
 enum STATUS_T{
     SOLID,
     CORRUPT
+};
+
+enum PROPOSED_CONFIG{
+    LO,
+    MID,
+    HI
 };
 
 class AckPacket{
@@ -25,6 +32,7 @@ class AckPacket{
     uint8_t prelude;
     uint32_t id;
     STATUS_T status;
+    PROPOSED_CONFIG prop_config;
 
     String to_string();
 };

@@ -20,12 +20,19 @@ enum STATUS_T{
     CORRUPT
 };
 
+enum PROPOSED_CONFIG{
+    LO,
+    MID,
+    HI
+};
+
 class AckPacket{
 
     public:
     uint8_t prelude;
     uint32_t id;
     STATUS_T status;
+    PROPOSED_CONFIG prop_config;
 
     String to_string();
 };
