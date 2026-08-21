@@ -20,6 +20,38 @@ PROPOSED_CONFIG requested_config;
 Reconf_commit reconfig_commit_packet;
 PROPOSED_CONFIG curr_config;
 
+uint32_t config_reset_timeout = 10000;
+uint32_t ack_send_window = 500;
+
+
+void apply_config(PROPOSED_CONFIG config)
+{
+    switch(config)
+    {
+        case HI:
+            LoRa.setSpreadingFactor(12);
+            LoRa.setSignalBandwidth(125E3);
+            LoRa.setCodingRate4(5);
+            LoRa.setTxPower(17);
+            break;
+
+        case MID:
+            LoRa.setSpreadingFactor(10);
+            LoRa.setSignalBandwidth(125E3);
+            LoRa.setCodingRate4(5);
+            LoRa.setTxPower(14);
+            break;
+
+        case LO:
+            LoRa.setSpreadingFactor(8);
+            LoRa.setSignalBandwidth(125E3);
+            LoRa.setCodingRate4(5);
+            LoRa.setTxPower(10);
+            break;
+    }
+}
+
+
 void setup() {
 
     Serial.begin(115200);
@@ -47,8 +79,19 @@ void setup() {
 
 void loop() {
     if(wait_for_packet == 1){
-        // Serial.println("Listening for node...");
+        if(DEBUG){
+            Serial.println("Listening for node...");
+        }
+        uint32_t config_reset_time_start = millis();
         while(1){
+            if(millis() - config_reset_time_start >=config_reset_timeout){
+                curr_config = HI;
+                apply_config(curr_config);
+                if(DEBUG){
+                    Serial.println("SIGNAL LOST...\nRESETING CONFIGURATION TO HI...");
+                }
+                config_reset_time_start = millis();
+            }
             int packetSize = LoRa.parsePacket();
             if (packetSize == sizeof(packet)) {
                 if (LoRa.available()){
@@ -96,6 +139,7 @@ void loop() {
                         LoRa.write((uint8_t*)&reconfig_commit_packet, sizeof(reconfig_commit_packet));
                         LoRa.endPacket();
                         curr_config = requested_config;
+                        apply_config(curr_config);
                     }
                 }
             }
@@ -110,10 +154,15 @@ void loop() {
 
         ack_packet.prop_config = requested_config;
 
-        LoRa.beginPacket();
-        LoRa.write((uint8_t*)&ack_packet, sizeof(ack_packet));
-        LoRa.endPacket();
-
+        uint32_t ack_send_time_start = millis();
+        delay(200);
+        while(millis() - ack_send_time_start <= ack_send_window){
+            LoRa.beginPacket();
+            LoRa.write((uint8_t*)&ack_packet, sizeof(ack_packet));
+            LoRa.endPacket();
+            delay(20);
+        }
+        
         LoRa.receive();
         wait_for_packet = 1;
     }
