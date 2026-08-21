@@ -43,6 +43,36 @@ enum NodeState{
 NodeState status = TRANSMITTING;
 
 
+void apply_config(PROPOSED_CONFIG config)
+{
+    switch(config)
+    {
+        case HI:
+            LoRa.setSpreadingFactor(12);
+            LoRa.setSignalBandwidth(125E3);
+            LoRa.setCodingRate4(5);
+            LoRa.setTxPower(17);
+            break;
+
+        case MID:
+            LoRa.setSpreadingFactor(10);
+            LoRa.setSignalBandwidth(125E3);
+            LoRa.setCodingRate4(5);
+            LoRa.setTxPower(14);
+            break;
+
+        case LO:
+            LoRa.setSpreadingFactor(8);
+            LoRa.setSignalBandwidth(125E3);
+            LoRa.setCodingRate4(5);
+            LoRa.setTxPower(10);
+            break;
+    }
+
+    LoRa.enableCrc();
+}
+
+
 void update_display_pkt_info(){
     String result = "PKT_ID: ";
     result += String(packet.id);
@@ -62,6 +92,7 @@ void update_display_pkt_info(){
     result += "-";
     display.update_line(0, result);
 }
+
 void update_display_link_info(){
     String result = "RSSI: ";
     result += String(LoRa.packetRssi());
@@ -97,10 +128,8 @@ void setup() {
         display.update_line(1, "LoRa Failed!");
         while (true);
     }
-    LoRa.setSpreadingFactor(12);
-    LoRa.setSignalBandwidth(125E3);
-    LoRa.setCodingRate4(5);
-    LoRa.enableCrc();
+
+    apply_config(curr_config);
 
     delay(100);
     Serial.println("LoRa OK.");
@@ -215,6 +244,7 @@ void loop() {
                         update_display_link_info();
                         update_display_action("TRANSMITTING. ("+ String(packet.retries)+ ")");
                         update_display_status("COMMS OK.");
+                        delay(500);
                         if(ack_packet.prop_config != curr_config){
                             requested_config = ack_packet.prop_config;
                             status = RECONFIGURING;
@@ -254,6 +284,9 @@ void loop() {
                 retransmission_tries -=1;
                 packet.retries += 1;
             }else{
+                curr_config = HI;
+                apply_config(curr_config);
+                update_display_status("SIGNAL LOST!");
                 status = HYBERNATING;
             }
             break;
@@ -278,10 +311,12 @@ void loop() {
 
             //sending reconfigure request packet
             update_display_status("REQUESTING RECONFIG...");
-            LoRa.beginPacket();
             reconf_request_packet.prop_config = requested_config;
+
+            LoRa.beginPacket();
             LoRa.write((uint8_t*) &reconf_request_packet, sizeof(reconf_request_packet));
             LoRa.endPacket();
+            
             LoRa.receive();
             // awaiting reconfigure commit packet from base
             reconf_commit_time_start = millis();
@@ -292,6 +327,7 @@ void loop() {
                 if(response){
                     if(reconf_commit_packet.prop_config == requested_config){
                         curr_config = requested_config;
+                        apply_config(curr_config);
                         success = 1;
                     }
                     break;
