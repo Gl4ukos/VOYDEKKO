@@ -29,12 +29,24 @@ enum PROPOSED_CONFIG{
 class AckPacket{
 
     public:
-    uint8_t prelude;
-    uint32_t id;
-    STATUS_T status;
-    PROPOSED_CONFIG prop_config;
+    uint32_t id = 0;
+    STATUS_T status = SOLID;
+    PROPOSED_CONFIG prop_config = HI;
 
     String to_string();
+};
+
+
+class Reconf_request{
+    public:
+    PROPOSED_CONFIG prop_config;
+    bool request = true;
+};
+
+class Reconf_commit{
+    public:
+    PROPOSED_CONFIG prop_config;
+    bool commit = true;
 };
 
 #endif

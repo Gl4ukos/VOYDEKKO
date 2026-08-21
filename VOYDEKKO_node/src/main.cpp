@@ -18,22 +18,48 @@ Display_Interface display;
 RTC_DATA_ATTR Packet packet;
 int wait_for_response = 0;
 AckPacket ack_packet;
+Reconf_commit reconf_commit_packet;
+Reconf_request reconf_request_packet;
+PROPOSED_CONFIG curr_config = HI;
+PROPOSED_CONFIG requested_config = curr_config;
 
+// Timing variables
+uint32_t ack_timeout = 2000;
+uint32_t ack_time_start;
+uint32_t reconf_commit_time_start;
+uint32_t reconf_commit_timeout = 2000;
+
+uint32_t hybernation_seconds = 5;
+int MAX_TRANSMISSION_TRIES = 5;
+int retransmission_tries = MAX_TRANSMISSION_TRIES;
 
 enum NodeState{
     HYBERNATING,
     TRANSMITTING,
     AWAITING_ACK,
-    RETRANSMITTING
+    RETRANSMITTING,
+    RECONFIGURING
 };
+NodeState status = TRANSMITTING;
 
 
 void update_display_pkt_info(){
     String result = "PKT_ID: ";
     result += String(packet.id);
-    result += " [";
-    result += String(packet.temp);
-    result += "]";
+    result += "  -";
+    switch (curr_config)
+    {
+    case HI:
+        result += "HI";
+        break;
+    case MID:
+        result += "MID";
+        break;
+    case LO:
+        result += "LO";
+        break;
+    }
+    result += "-";
     display.update_line(0, result);
 }
 void update_display_link_info(){
@@ -85,22 +111,14 @@ void setup() {
     delay(250);
 
     packet.prelude = 0b10101010;
-
+    ack_packet.prop_config = HI;
 }
 
 
-// Timing variables
-uint32_t ack_timeout = 2000;
-uint32_t ack_time_start;
 
-uint32_t hybernation_seconds = 5;
-int MAX_TRANSMISSION_TRIES = 5;
-int retransmission_tries = MAX_TRANSMISSION_TRIES;
-
-NodeState status = TRANSMITTING;
 
 void hybernate(){
-    delay(1000);
+    delay(500);
     status = TRANSMITTING;
     // esp_sleep_enable_timer_wakeup((uint64_t)hybernation_seconds * 1000000ULL);
     // esp_deep_sleep_start();
@@ -109,14 +127,14 @@ void hybernate(){
 void transmit_packet(){
     
     LoRa.beginPacket();
-    update_display_status("Begin transmit");
-    delay(500);
+    // update_display_status("Begin transmit");
+    // delay(100);
     LoRa.write((uint8_t*) &packet, sizeof(packet));
-    update_display_status("Transmit write");
-    delay(500);
+    // update_display_status("Transmit write");
+    // delay(100);
     LoRa.endPacket();
-    update_display_status("End transmit");
-    delay(500);
+    // update_display_status("End transmit");
+    // delay(100);
 
 }
 
@@ -131,6 +149,17 @@ int listen_for_ack(){
     return 0;
 }
 
+int listen_for_reconf_commit(){
+    int packet_size = LoRa.parsePacket();
+    if(packet_size == sizeof(reconf_commit_packet)){
+        if(LoRa.available()){
+            LoRa.readBytes((uint8_t*) &reconf_commit_packet, sizeof(reconf_commit_packet));
+            return 1;
+        }
+    }
+    return 0;
+}
+
 void loop() {
     
     
@@ -139,7 +168,7 @@ void loop() {
         {
             display.display.clearDisplay();
             display.update_line(2,"  HYBERNATING... ");
-            delay(1000);
+            delay(250);
             display.display.clearDisplay();
             display.display.display();
             hybernate();
@@ -154,7 +183,7 @@ void loop() {
             display.display.clearDisplay();
             update_display_pkt_info();
             update_display_action("TRANSMITTING...");
-            delay(1000);
+            delay(250);
 
             transmit_packet();
             status = AWAITING_ACK;
@@ -175,7 +204,7 @@ void loop() {
                 if(response){
                     break;
                 }
-                delay(50);
+                delay(25);
             }
             display.display.clearDisplay();
             if(response == 0){
@@ -185,20 +214,29 @@ void loop() {
                 if(ack_packet.id == packet.id){
                     if(ack_packet.status == SOLID){
                         update_display_link_info();
+                        update_display_action("TRANSMITTING. ("+ String(packet.retries)+ ")");
                         update_display_status("COMMS OK.");
-                        status = HYBERNATING;
+                        if(ack_packet.prop_config != curr_config){
+                            requested_config = ack_packet.prop_config;
+                            status = RECONFIGURING;
+                        }else{
+                            status = HYBERNATING;                            
+                        }
                     }else{
+                        Serial.println(ack_packet.to_string());
                         update_display_link_info();
+                        update_display_action("TRANSMITTING. ("+ String(packet.retries)+ ")");
                         update_display_status("CORRUPT.");
-                        status = HYBERNATING;
+                        status = RETRANSMITTING;
                     }
                 }else{
                     update_display_link_info();
+                    update_display_action("TRANSMITTING. ("+ String(packet.retries)+ ")");
                     update_display_status("PACKET LOSS!");
                     status = HYBERNATING;
                 }
             }
-            delay(2000);
+            delay(1000);
             break;
         }
 
@@ -217,6 +255,55 @@ void loop() {
             }else{
                 status = HYBERNATING;
             }
+            break;
+        }
+        case RECONFIGURING:
+        {
+            String conf_type ="";
+            switch(ack_packet.prop_config)
+            {
+            case HI:
+                conf_type += "HI";
+                break;
+            case MID:
+                conf_type += "MID";
+                break;
+            case LO:
+                conf_type += "LO";
+                break;
+            }
+            update_display_action("RECONFIGURING. ("+ conf_type+ ")");
+
+
+            //sending reconfigure request packet
+            update_display_status("REQUESTING RECONFIG...");
+            LoRa.beginPacket();
+            reconf_request_packet.prop_config = requested_config;
+            LoRa.write((uint8_t*) &reconf_request_packet, sizeof(reconf_request_packet));
+            LoRa.endPacket();
+            delay(250);
+            // awaiting reconfigure commit packet from base
+            reconf_commit_time_start = millis();
+            int response = 0;
+            int success = 0;
+            while(millis() - reconf_commit_time_start <= reconf_commit_timeout){
+                response = listen_for_reconf_commit();
+                if(response){
+                    if(reconf_commit_packet.prop_config == requested_config){
+                        curr_config = requested_config;
+                        success = 1;
+                    }
+                    break;
+                }
+                delay(25);
+            }
+            if(success == 0){
+                update_display_status("RECONFIG FAILED");
+            }else{
+                update_display_status("RECONFIG COMPLETE");
+            }
+            delay(1000);
+            status = HYBERNATING;
             break;
         }
     }
