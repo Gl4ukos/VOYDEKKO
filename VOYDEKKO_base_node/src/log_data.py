@@ -15,7 +15,7 @@ rssi_log_file = open("rssi_log.txt", "w")
 snr_log_file = open("snr_log.txt", "w")
 retries_log_file = open("retries_log.txt", "w")
 
-s = serial.Serial("/dev/ttyUSB0", 115200)
+s = serial.Serial("/dev/ttyUSB1", 115200)
 
 max_samples = 1_000_000
 reset = 0
@@ -93,7 +93,7 @@ def update(frame):
 
 
     # Only plot when data lengths match
-    n = min(len(packet_id), len(temperature), len(rssi), len(snr))
+    n = min(len(packet_id), len(temperature), len(rssi), len(snr), len(retries))
 
     if n > 0:
         ax1.clear()

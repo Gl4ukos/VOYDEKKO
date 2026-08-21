@@ -23,7 +23,7 @@ void setup() {
         Serial.println("LoRa init failed!");
         while (true);
     }
-    LoRa.setSpreadingFactor(10);
+    LoRa.setSpreadingFactor(12);
     LoRa.setSignalBandwidth(125E3);
     LoRa.setCodingRate4(5);
     LoRa.enableCrc();
@@ -42,7 +42,7 @@ uint32_t ack_time_start = millis();
 
 void loop() {
     if(wait_for_packet == 1){
-        Serial.println("Listening for node...");
+        // Serial.println("Listening for node...");
         while(1){
             int packetSize = LoRa.parsePacket();
             if (packetSize == sizeof(packet)) {
@@ -54,6 +54,8 @@ void loop() {
                     Serial.println(LoRa.packetRssi());
                     Serial.print("SNR: ");
                     Serial.println(LoRa.packetSnr());
+                    Serial.print("RETRIES: ");
+                    Serial.println(packet.retries);
                     Serial.println();
                     
                     wait_for_packet = 0;
@@ -64,7 +66,7 @@ void loop() {
         }
     }
     else{
-        Serial.println("Sending ACK");
+        // Serial.println("Sending ACK");
         ack_time_start = millis();        
         while(millis() - ack_time_start <= ack_timeout){
             ack_packet.id = packet.id;
